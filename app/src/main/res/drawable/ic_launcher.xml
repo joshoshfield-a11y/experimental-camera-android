@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Local vector: @android:drawable/* camera icons mostly don't exist (launcher gotcha) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp" android:height="48dp"
+    android:viewportWidth="48" android:viewportHeight="48">
+    <path android:fillColor="#FF2222" android:pathData="M24,4a20,20 0 1,0 0.1,0z"/>
+    <path android:fillColor="#0B0D10" android:pathData="M24,14a10,10 0 1,0 0.1,0z"/>
+    <path android:fillColor="#FF4444" android:pathData="M24,19a5,5 0 1,0 0.1,0z"/>
+</vector>
