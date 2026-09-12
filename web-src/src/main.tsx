@@ -26,6 +26,7 @@ function App(){
   const [running,setRunning]=useState(false), [mirror,setMirror]=useState(true);
   const [recording,setRecording]=useState(false), [mode,setMode]=useState<"face"|"object"|"everything">("everything");
   const [faces,setFaces]=useState(0), [objects,setObjects]=useState(0);
+  const [status,setStatus]=useState("");
   const [fx,setFx]=useState<FX>(defaults);
   const raf=useRef<number>(0), stream=useRef<MediaStream|null>(null);
   const recorder=useRef<MediaRecorder|null>(null), chunks=useRef<Blob[]>([]);
@@ -38,26 +39,29 @@ function App(){
   useEffect(()=>()=>{cancelAnimationFrame(raf.current); stream.current?.getTracks().forEach(t=>t.stop())},[]);
 
   async function start(){
-    if(running){stream.current?.getTracks().forEach(t=>t.stop()); cancelAnimationFrame(raf.current); setRunning(false); return}
+    if(running){stream.current?.getTracks().forEach(t=>t.stop()); cancelAnimationFrame(raf.current); setRunning(false); setStatus(""); return}
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){setStatus("CAMERA ERROR: mediaDevices missing -- insecure context?"); return}
     try{
       const s=await navigator.mediaDevices.getUserMedia({
         video:{facingMode:"user", width:{ideal:1920}, height:{ideal:1080}, frameRate:{ideal:60}},
         audio:false
       });
       stream.current=s; video.current!.srcObject=s; await video.current!.play();
-      const vision=await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm"
-      );
+      setRunning(true); draw(performance.now());
+    }catch(e){console.error(e); const E=e as any; setStatus("CAMERA ERROR: "+(E?.name||E)+" "+(E?.message||"")); return}
+    setStatus("LOADING VISION MODELS...");
+    try{
+      const vision=await FilesetResolver.forVisionTasks("./wasm");
       face.current=await FaceLandmarker.createFromOptions(vision,{
-        baseOptions:{modelAssetPath:"https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task"},
+        baseOptions:{modelAssetPath:"./models/face_landmarker.task"},
         runningMode:"VIDEO", numFaces:4, outputFaceBlendshapes:false
       });
       detector.current=await ObjectDetector.createFromOptions(vision,{
-        baseOptions:{modelAssetPath:"https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float16/1/efficientdet_lite0.tflite"},
+        baseOptions:{modelAssetPath:"./models/efficientdet_lite0.tflite"},
         runningMode:"VIDEO", scoreThreshold:.35, maxResults:12
       });
-      setRunning(true); draw(performance.now());
-    }catch(e){console.error(e); alert("Camera/model startup failed. Check camera permission and network access.");}
+      setStatus("");
+    }catch(e){console.error(e); const E=e as any; setStatus("MODELS FAILED -- camera live, overlays off: "+(E?.message||E));}
   }
 
   function draw(t:number){
@@ -140,7 +144,7 @@ function App(){
     <header><div><strong>EXPERIMENTAL CAMERA</strong><small>REAL-TIME VISION / GEOMETRY LAB</small></div>
       <div className="status"><i className={running?"on":""}></i>{running?"LIVE":"OFFLINE"}</div></header>
     <section className="stage"><canvas ref={canvas}/>{!running&&<div className="idle">CAMERA OFFLINE<br/><small>PRESS INITIALIZE</small></div>}
-      <div className="hud"><span>FACE {faces}</span><span>OBJ {objects}</span><span>{canvas.current?.width||0}×{canvas.current?.height||0}</span></div></section>
+      <div className="hud">{status&&<span style={{color:"#f90"}}>{status}</span>}<span>FACE {faces}</span><span>OBJ {objects}</span><span>{canvas.current?.width||0}×{canvas.current?.height||0}</span></div></section>
     <section className="controls">
       <div className="toolbar">
         <button onClick={start}>{running?"STOP":"INITIALIZE CAMERA"}</button>

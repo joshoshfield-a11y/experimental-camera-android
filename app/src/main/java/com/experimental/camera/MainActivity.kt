@@ -8,7 +8,9 @@ import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Base64
+import android.util.Log
 import android.view.WindowManager
+import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
 import android.webkit.WebResourceRequest
@@ -120,6 +122,14 @@ class MainActivity : ComponentActivity() {
                 filePathCallback = callback
                 val accepts = params.acceptTypes.filter { it.isNotEmpty() }.toTypedArray()
                 filePicker.launch(if (accepts.isNotEmpty()) accepts else arrayOf("*/*"))
+                return true
+            }
+
+            // JS console -> logcat (diagnostics: white screens, getUserMedia errors)
+            override fun onConsoleMessage(message: ConsoleMessage?): Boolean {
+                message?.let {
+                    Log.d("ExpCamWeb", "[${'$'}{it.messageLevel()}] ${'$'}{it.message()} (${'$'}{it.sourceId()}:${'$'}{it.lineNumber()})")
+                }
                 return true
             }
         }
